@@ -4,19 +4,8 @@
 
 create extension if not exists pgcrypto;
 
--- Remove existing policies on these five tables so anonymous clients cannot bypass token checks.
-do $$
-declare p record;
-begin
-  for p in
-    select schemaname, tablename, policyname
-    from pg_policies
-    where schemaname = 'public'
-      and tablename in ('schedules','participants','availability','busy_periods','notes')
-  loop
-    execute format('drop policy if exists %I on %I.%I', p.policyname, p.schemaname, p.tablename);
-  end loop;
-end $$;
+-- Existing policies are intentionally left in place. Direct table privileges are revoked below,
+-- so browser clients must use the token-validating RPC functions. This avoids dropping policies.
 
 revoke all on public.schedules, public.participants, public.availability, public.busy_periods, public.notes from anon, authenticated;
 grant select, insert, update, delete on public.schedules, public.participants, public.availability, public.busy_periods, public.notes to service_role;
